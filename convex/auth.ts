@@ -1,13 +1,11 @@
 import { convexAuth } from "@convex-dev/auth/server";
-import GitHub from "@auth/core/providers/github";
-import { ResendOTP } from "./otp/ResendOTP";
+import Google from "@auth/core/providers/google";
 
 export const { auth, signIn, signOut, store } = convexAuth({
   providers: [
-    ResendOTP,
-    GitHub({
+    Google({
       authorization: {
-        params: { scope: "user:email" },
+        params: { scope: "openid email profile" },
       },
     }),
   ],

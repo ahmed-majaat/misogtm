@@ -1,6 +1,9 @@
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useConvexAuth } from "convex/react";
+import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { api } from "~/convex/_generated/api";
 import type { Doc } from "~/convex/_generated/dataModel";
 import siteConfig from "~/site.config";
@@ -19,10 +22,29 @@ export const Route = createFileRoute("/")({
 });
 
 function MisoWorkspace() {
-  const { data: initiatives } = useQuery(convexQuery(api.gtm.listInitiatives, {}));
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const { data: initiatives } = useQuery({
+    ...convexQuery(api.gtm.listInitiatives, {}),
+    enabled: isAuthenticated,
+  });
   const { mutate: seedDemo, isPending: isSeeding } = useMutation({
     mutationFn: useConvexMutation(api.gtm.seedDemoInitiatives),
   });
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      void navigate({ to: "/login" });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-white text-neutral-950">
+        <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
+      </main>
+    );
+  }
 
   const mapped = (initiatives as ConvexInitiative[] | undefined)?.map(mapInitiative) ?? [];
   const displayInitiatives = mapped.length > 0 ? mapped : demoInitiatives;
