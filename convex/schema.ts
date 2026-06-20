@@ -52,6 +52,14 @@ export const taskStatusValidator = v.union(
 );
 export type TaskStatus = Infer<typeof taskStatusValidator>;
 
+export const projectStatusValidator = v.union(
+  v.literal("idea"),
+  v.literal("active"),
+  v.literal("paused"),
+  v.literal("done"),
+);
+export type ProjectStatus = Infer<typeof projectStatusValidator>;
+
 const schema = defineSchema({
   ...authTables,
   users: defineTable({
@@ -65,6 +73,17 @@ const schema = defineSchema({
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
   }).index("email", ["email"]),
+  projects: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    status: projectStatusValidator,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+  })
+    .index("createdBy", ["createdBy"])
+    .index("status", ["status"])
+    .index("createdAt", ["createdAt"]),
   initiatives: defineTable({
     name: v.string(),
     initiativeType: v.string(),

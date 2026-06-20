@@ -11,10 +11,18 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as ProjectsImport } from './routes/projects'
 import { Route as LoginImport } from './routes/login'
 import { Route as IndexImport } from './routes/index'
+import { Route as ProjectsNewImport } from './routes/projects.new'
+import { Route as ProjectsProjectIdImport } from './routes/projects.$projectId'
 
 // Create/Update Routes
+
+const ProjectsRoute = ProjectsImport.update({
+  path: '/projects',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const LoginRoute = LoginImport.update({
   path: '/login',
@@ -24,6 +32,16 @@ const LoginRoute = LoginImport.update({
 const IndexRoute = IndexImport.update({
   path: '/',
   getParentRoute: () => rootRoute,
+} as any)
+
+const ProjectsNewRoute = ProjectsNewImport.update({
+  path: '/new',
+  getParentRoute: () => ProjectsRoute,
+} as any)
+
+const ProjectsProjectIdRoute = ProjectsProjectIdImport.update({
+  path: '/$projectId',
+  getParentRoute: () => ProjectsRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -44,12 +62,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
     }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsImport
+      parentRoute: typeof rootRoute
+    }
+    '/projects/$projectId': {
+      id: '/projects/$projectId'
+      path: '/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof ProjectsProjectIdImport
+      parentRoute: typeof ProjectsImport
+    }
+    '/projects/new': {
+      id: '/projects/new'
+      path: '/new'
+      fullPath: '/projects/new'
+      preLoaderRoute: typeof ProjectsNewImport
+      parentRoute: typeof ProjectsImport
+    }
   }
 }
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({ IndexRoute, LoginRoute })
+export const routeTree = rootRoute.addChildren({
+  IndexRoute,
+  LoginRoute,
+  ProjectsRoute: ProjectsRoute.addChildren({
+    ProjectsProjectIdRoute,
+    ProjectsNewRoute,
+  }),
+})
 
 /* prettier-ignore-end */
 
@@ -60,7 +106,8 @@ export const routeTree = rootRoute.addChildren({ IndexRoute, LoginRoute })
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/login"
+        "/login",
+        "/projects"
       ]
     },
     "/": {
@@ -68,6 +115,21 @@ export const routeTree = rootRoute.addChildren({ IndexRoute, LoginRoute })
     },
     "/login": {
       "filePath": "login.tsx"
+    },
+    "/projects": {
+      "filePath": "projects.tsx",
+      "children": [
+        "/projects/$projectId",
+        "/projects/new"
+      ]
+    },
+    "/projects/$projectId": {
+      "filePath": "projects.$projectId.tsx",
+      "parent": "/projects"
+    },
+    "/projects/new": {
+      "filePath": "projects.new.tsx",
+      "parent": "/projects"
     }
   }
 }

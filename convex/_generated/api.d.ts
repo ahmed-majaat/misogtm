@@ -21,6 +21,7 @@ import type * as gtm from "../gtm.js";
 import type * as http from "../http.js";
 import type * as otp_ResendOTP from "../otp/ResendOTP.js";
 import type * as otp_VerificationCodeEmail from "../otp/VerificationCodeEmail.js";
+import type * as projects from "../projects.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "otp/ResendOTP": typeof otp_ResendOTP;
   "otp/VerificationCodeEmail": typeof otp_VerificationCodeEmail;
+  projects: typeof projects;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
