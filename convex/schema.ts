@@ -72,7 +72,9 @@ const schema = defineSchema({
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
-  }).index("email", ["email"]),
+  })
+    .index("email", ["email"])
+    .index("phone", ["phone"]),
   projects: defineTable({
     name: v.string(),
     description: v.optional(v.string()),

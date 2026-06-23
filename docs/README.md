@@ -68,6 +68,30 @@ npx @convex-dev/auth
    npx convex env set AUTH_RESEND_KEY re_...
    ```
 
+## Google Auth
+
+Google sign-in is handled by Convex Auth. Add the OAuth credentials to the
+Convex deployment that serves the app:
+
+```sh
+npx convex env set AUTH_GOOGLE_ID your-google-client-id
+npx convex env set AUTH_GOOGLE_SECRET your-google-client-secret
+```
+
+In the Google Cloud OAuth client, add the Convex Auth callback URLs for every
+Convex deployment that should support Google sign-in:
+
+```text
+https://<your-convex-site>.convex.site/api/auth/callback/google
+```
+
+Current Os GTM callbacks:
+
+```text
+https://watchful-crab-72.convex.site/api/auth/callback/google
+https://adorable-kookabura-489.convex.site/api/auth/callback/google
+```
+
 ## Stripe
 
 In order to use Stripe Subscriptions and seed our database, we'll require to get the secret keys from our Stripe Dashboard.

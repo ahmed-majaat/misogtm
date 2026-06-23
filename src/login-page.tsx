@@ -1,18 +1,23 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth } from "convex/react";
 import {
+  KeyRound,
   Loader2,
   LockKeyhole,
+  Mail,
   ShieldCheck,
+  UserPlus,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { cn } from "@/utils/misc";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const { signIn } = useAuthActions();
-  const [pendingAction, setPendingAction] = useState<"google" | null>(null);
+  const [authMode, setAuthMode] = useState<"signIn" | "signUp">("signIn");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,22 +26,31 @@ export function LoginPage() {
     }
   }, [isAuthenticated, navigate]);
 
-  async function signInWithGoogle() {
+  async function handlePasswordAuth(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError(null);
-    setPendingAction("google");
+    setIsSubmitting(true);
 
     try {
-      const result = await signIn("google", { redirectTo: "/" });
-      if (result.redirect) {
-        window.location.href = result.redirect.toString();
+      const formData = new FormData(event.currentTarget);
+      formData.set("flow", authMode);
+      const result = await signIn("password", formData);
+
+      if (!result.signingIn) {
+        setError(getAuthErrorMessage(null, authMode));
+        return;
       }
-    } catch {
-      setError("Connexion Google indisponible pour le moment.");
-      setPendingAction(null);
+
+      void navigate({ to: "/" });
+    } catch (error) {
+      console.error("Password sign-in failed", error);
+      setError(getAuthErrorMessage(error, authMode));
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
-  const isGooglePending = pendingAction === "google";
+  const isSignUp = authMode === "signUp";
 
   if (isLoading || isAuthenticated) {
     return (
@@ -84,27 +98,116 @@ export function LoginPage() {
               <div className="mb-4 grid h-10 w-10 place-items-center rounded-md border border-neutral-200 bg-white shadow-sm">
                 <LockKeyhole className="h-5 w-5" />
               </div>
-              <h2 className="text-2xl font-semibold text-neutral-950">Connexion</h2>
+              <h2 className="text-2xl font-semibold text-neutral-950">
+                {isSignUp ? "Creation du compte" : "Connexion"}
+              </h2>
               <p className="mt-2 text-sm leading-6 text-neutral-500">
-                Utilise ton compte Google pour ouvrir ton espace Miso GTM.
+                {isSignUp
+                  ? "Choisis un courriel et un mot de passe pour creer ton espace Miso GTM."
+                  : "Utilise le courriel et le mot de passe d'un compte deja cree."}
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={signInWithGoogle}
-              disabled={isGooglePending}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-900 shadow-sm disabled:opacity-50"
-            >
-              {isGooglePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleMark />}
-              Continuer avec Google
-            </button>
+            <div className="mb-5 grid grid-cols-2 rounded-md border border-neutral-200 bg-white p-1 text-sm font-medium shadow-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setAuthMode("signIn");
+                }}
+                className={cn(
+                  "h-9 rounded px-3 text-neutral-600",
+                  !isSignUp && "bg-neutral-950 text-white",
+                )}
+              >
+                Connexion
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setAuthMode("signUp");
+                }}
+                className={cn(
+                  "h-9 rounded px-3 text-neutral-600",
+                  isSignUp && "bg-neutral-950 text-white",
+                )}
+              >
+                Nouveau compte
+              </button>
+            </div>
+
+            <form onSubmit={handlePasswordAuth} className="space-y-4">
+              <label className="block text-sm font-medium text-neutral-700">
+                Courriel
+                <span className="mt-1.5 flex h-11 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 shadow-sm focus-within:border-neutral-900">
+                  <Mail className="h-4 w-4 text-neutral-400" />
+                  <input
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    className="w-full bg-transparent text-sm text-neutral-950 outline-none placeholder:text-neutral-400"
+                    placeholder="toi@entreprise.com"
+                  />
+                </span>
+              </label>
+
+              <label className="block text-sm font-medium text-neutral-700">
+                Mot de passe
+                <span className="mt-1.5 flex h-11 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 shadow-sm focus-within:border-neutral-900">
+                  <KeyRound className="h-4 w-4 text-neutral-400" />
+                  <input
+                    name="password"
+                    type="password"
+                    autoComplete={isSignUp ? "new-password" : "current-password"}
+                    required
+                    minLength={8}
+                    className="w-full bg-transparent text-sm text-neutral-950 outline-none placeholder:text-neutral-400"
+                    placeholder="8 caracteres minimum"
+                  />
+                </span>
+              </label>
+
+              <input name="flow" type="hidden" value={authMode} />
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white shadow-sm disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isSignUp ? (
+                  <UserPlus className="h-4 w-4" />
+                ) : (
+                  <LockKeyhole className="h-4 w-4" />
+                )}
+                {isSignUp ? "Creer le compte" : "Se connecter"}
+              </button>
+            </form>
 
             {error ? (
-              <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p
+                role="alert"
+                className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              >
                 {error}
               </p>
             ) : null}
+
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setAuthMode(isSignUp ? "signIn" : "signUp");
+              }}
+              className="mt-5 text-sm font-medium text-neutral-700 underline-offset-4 hover:underline"
+            >
+              {isSignUp
+                ? "J'ai deja un compte"
+                : "Je n'ai pas encore de compte"}
+            </button>
           </div>
         </section>
       </div>
@@ -112,12 +215,26 @@ export function LoginPage() {
   );
 }
 
-function GoogleMark() {
-  return (
-    <span className="grid h-4 w-4 place-items-center rounded-full border border-neutral-200 text-[10px] font-semibold text-neutral-700">
-      G
-    </span>
-  );
+function getAuthErrorMessage(error: unknown, authMode: "signIn" | "signUp") {
+  if (error === null) {
+    return authMode === "signIn"
+      ? "La connexion n'a pas abouti. Verifie le courriel et le mot de passe."
+      : "Le compte a peut-etre deja ete cree. Essaie de te connecter.";
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (message.toLowerCase().includes("already")) {
+    return "Un compte existe deja avec ce courriel. Utilise la connexion.";
+  }
+
+  if (message.toLowerCase().includes("password")) {
+    return "Utilise un mot de passe d'au moins 8 caracteres.";
+  }
+
+  return authMode === "signIn"
+    ? "Courriel ou mot de passe invalide. Si tu n'as pas encore cree ce compte, utilise Nouveau compte."
+    : "Impossible de creer le compte avec ces informations.";
 }
 
 function LoginMetric({ label, value }: { label: string; value: string }) {

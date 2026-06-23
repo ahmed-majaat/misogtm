@@ -1,5 +1,5 @@
 import { mutation, query, type MutationCtx } from "@cvx/_generated/server";
-import { type Id } from "@cvx/_generated/dataModel";
+import { type Doc, type Id } from "@cvx/_generated/dataModel";
 import { auth } from "@cvx/auth";
 import {
   BusinessRole,
@@ -155,31 +155,21 @@ export const listInitiatives = query({
         ]);
 
         const channelIds = Array.from(
-          new Set(deliverables.flatMap((deliverable) => deliverable.channelIds)),
+          new Set(deliverables.flatMap((deliverable) => deliverable.channelIds ?? [])),
         );
         const channels = (
           await Promise.all(channelIds.map((channelId) => ctx.db.get(channelId)))
         ).filter((channel) => channel !== null);
 
-        return {
-          ...initiative,
+        return toInitiativeReadModel({
+          initiative,
           businessOwners,
-          businessChannels: channels,
           deliverables,
           tasks,
-          decisions: decisions.sort((a, b) => b.decidedAt - a.decidedAt),
-          activities: activities.sort((a, b) => b.createdAt - a.createdAt),
-          businessRoles: Array.from(
-            new Set([
-              ...businessOwners.map((owner) => owner.businessRole),
-              ...deliverables.map((deliverable) => deliverable.businessRole),
-              ...tasks.flatMap((task) => task.businessRole ? [task.businessRole] : []),
-              ...channels.map((channel) => channel.businessRole),
-            ]),
-          ),
-          deliverablesDone: deliverables.filter((item) => item.status === "done").length,
-          deliverablesTotal: deliverables.length,
-        };
+          decisions,
+          activities,
+          channels,
+        });
       }),
     );
   },
@@ -482,9 +472,9 @@ export const seedDemoInitiatives = mutation({
 });
 
 function businessRoleLabel(role: BusinessRole) {
-  const labels: Record<BusinessRole, string> = {
+  const labels: Record<BusinessRole, "Produit" | "Operations" | "Marketing" | "Ventes" | "Formation"> = {
     product: "Produit",
-    operations: "Opérations",
+    operations: "Operations",
     marketing: "Marketing",
     sales: "Ventes",
     training: "Formation",
@@ -500,6 +490,159 @@ function rolloutModeLabel(mode: RolloutMode) {
     internal_only: "Interne seulement",
   };
   return labels[mode];
+}
+
+type InitiativeReadModelInput = {
+  initiative: Doc<"initiatives">;
+  businessOwners: Array<Doc<"initiativeBusinessOwners">>;
+  deliverables: Array<Doc<"deliverables">>;
+  tasks: Array<Doc<"gtmTasks">>;
+  decisions: Array<Doc<"decisions">>;
+  activities: Array<Doc<"activities">>;
+  channels: Array<Doc<"businessChannels">>;
+};
+
+function toInitiativeReadModel({
+  initiative,
+  businessOwners,
+  deliverables,
+  tasks,
+  decisions,
+  activities,
+  channels,
+}: InitiativeReadModelInput) {
+  return omitUndefinedProperties({
+    name: initiative.name,
+    initiativeType: initiative.initiativeType,
+    targetAudience: initiative.targetAudience,
+    health: healthLabel(initiative.gtmHealth),
+    stage: stageLabel(initiative.gtmStage),
+    rolloutMode: rolloutModeLabel(initiative.rolloutMode),
+    businessChannels: channels.map((channel) => channel.name),
+    businessOwners: businessOwners.map((owner) => ({
+      businessRole: businessRoleLabel(owner.businessRole),
+      owner: owner.ownerName,
+    })),
+    deliverables: deliverables.map((deliverable) =>
+      omitUndefinedProperties({
+        title: deliverable.title,
+        status: deliverableStatusLabel(deliverable.status),
+        businessRole: businessRoleLabel(deliverable.businessRole),
+        responsible: deliverable.responsibleName,
+        approver: deliverable.approverName,
+        channels: channels
+          .filter((channel) => (deliverable.channelIds ?? []).includes(channel._id))
+          .map((channel) => channel.name),
+        dueDate: formatDate(deliverable.dueDate),
+      }),
+    ),
+    tasks: tasks.map((task) => {
+      const deliverable = task.deliverableId
+        ? deliverables.find((item) => item._id === task.deliverableId)
+        : undefined;
+
+      return omitUndefinedProperties({
+        title: task.title,
+        status: taskStatusLabel(task.status),
+        businessRole: task.businessRole ? businessRoleLabel(task.businessRole) : undefined,
+        owner: task.ownerName,
+        deliverableTitle: deliverable?.title,
+      });
+    }),
+    decisions: [...decisions]
+      .sort((a, b) => b.decidedAt - a.decidedAt)
+      .map((decision) => ({
+        title: decision.title,
+        summary: decision.summary,
+        decidedAt: formatDate(decision.decidedAt) ?? "Date inconnue",
+      })),
+    activities: [...activities]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((activity) => ({
+        action: activity.action,
+        actor: "Miso GTM",
+        createdAt: formatDate(activity.createdAt) ?? "Date inconnue",
+      })),
+    gtmOwner: initiative.gtmOwnerName,
+    productionDate: formatDate(initiative.productionDate),
+    gtmStartDate: formatDate(initiative.gtmStartDate) ?? "Non definie",
+    gtmEndDate: formatDate(initiative.gtmEndDate),
+    goal: initiative.goal ?? "Objectif GTM a definir.",
+    archived: initiative.gtmStage === "archived",
+  });
+}
+
+function healthLabel(value: GtmHealth) {
+  const labels: Record<GtmHealth, "On Track" | "At Risk" | "Off Track"> = {
+    on_track: "On Track",
+    at_risk: "At Risk",
+    off_track: "Off Track",
+  };
+  return labels[value];
+}
+
+function stageLabel(value: GtmStage) {
+  const labels: Record<GtmStage, string> = {
+    idea: "Idee",
+    planning: "Planification",
+    preparation: "Preparation",
+    launching: "En lancement",
+    launched: "Lance",
+    archived: "Archive",
+  };
+  return labels[value];
+}
+
+function deliverableStatusLabel(value: Doc<"deliverables">["status"]) {
+  const labels: Record<Doc<"deliverables">["status"], "A faire" | "En cours" | "En validation" | "Termine"> = {
+    todo: "A faire",
+    in_progress: "En cours",
+    in_review: "En validation",
+    done: "Termine",
+  };
+  return labels[value];
+}
+
+function taskStatusLabel(value: Doc<"gtmTasks">["status"]) {
+  const labels: Record<Doc<"gtmTasks">["status"], "A faire" | "En cours" | "Bloquee" | "Terminee"> = {
+    todo: "A faire",
+    in_progress: "En cours",
+    blocked: "Bloquee",
+    done: "Terminee",
+  };
+  return labels[value];
+}
+
+function formatDate(value?: number) {
+  if (!value) {
+    return undefined;
+  }
+
+  const date = new Date(value);
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  return `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+}
+
+function omitUndefinedProperties<T extends Record<string, unknown>>(value: T) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, propertyValue]) => propertyValue !== undefined),
+  ) as {
+    [K in keyof T as undefined extends T[K] ? never : K]: T[K];
+  } & Partial<T>;
 }
 
 async function assertOwnsInitiative(

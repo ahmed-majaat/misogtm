@@ -8,6 +8,8 @@ import {
   Filter,
   Grid2X2,
   ListChecks,
+  Loader2,
+  LogOut,
   MessageSquareText,
   MoreHorizontal,
   Plus,
@@ -19,6 +21,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import type { User } from "~/types";
 import { cn } from "@/utils/misc";
 
 export type Health = "On Track" | "At Risk" | "Off Track";
@@ -98,9 +101,9 @@ type Screen =
 
 type GtmMatrixProps = {
   initiatives: GtmMatrixInitiative[];
-  showSeedButton?: boolean;
-  isSeeding?: boolean;
-  onSeedDemo?: () => void;
+  currentUser?: User;
+  isSigningOut?: boolean;
+  onSignOut?: () => void;
 };
 
 const screens: Array<{ id: Screen; icon: ReactNode }> = [
@@ -136,9 +139,9 @@ const taskStatusTone: Record<TaskStatus, string> = {
 
 export function GtmMatrix({
   initiatives,
-  showSeedButton,
-  isSeeding,
-  onSeedDemo,
+  currentUser,
+  isSigningOut,
+  onSignOut,
 }: GtmMatrixProps) {
   const [workspaceInitiatives, setWorkspaceInitiatives] = useState(initiatives);
   const [screen, setScreen] = useState<Screen>("Matrice GTM");
@@ -181,7 +184,7 @@ export function GtmMatrix({
           initiative.initiativeType,
           initiative.targetAudience,
           initiative.gtmOwner,
-          initiative.businessChannels.join(" "),
+          (initiative.businessChannels ?? []).join(" "),
           initiative.deliverables.map((deliverable) => deliverable.title).join(" "),
           initiative.businessOwners.map((owner) => owner.owner).join(" "),
         ]
@@ -201,9 +204,9 @@ export function GtmMatrix({
           <WorkspaceHeader
             query={query}
             setQuery={setQuery}
-            showSeedButton={showSeedButton}
-            isSeeding={isSeeding}
-            onSeedDemo={onSeedDemo}
+            currentUser={currentUser}
+            isSigningOut={isSigningOut}
+            onSignOut={onSignOut}
             onCreateInitiative={() => {
               const initiative = createDraftInitiative(workspaceInitiatives.length + 1);
               setWorkspaceInitiatives((items) => [initiative, ...items]);
@@ -293,16 +296,16 @@ export function GtmMatrix({
 function WorkspaceHeader({
   query,
   setQuery,
-  showSeedButton,
-  isSeeding,
-  onSeedDemo,
+  currentUser,
+  isSigningOut,
+  onSignOut,
   onCreateInitiative,
 }: {
   query: string;
   setQuery: (query: string) => void;
-  showSeedButton?: boolean;
-  isSeeding?: boolean;
-  onSeedDemo?: () => void;
+  currentUser?: User;
+  isSigningOut?: boolean;
+  onSignOut?: () => void;
   onCreateInitiative: () => void;
 }) {
   return (
@@ -317,16 +320,6 @@ function WorkspaceHeader({
         />
       </label>
       <div className="ml-4 flex items-center gap-2 max-md:ml-0">
-        {showSeedButton ? (
-          <button
-            onClick={onSeedDemo}
-            disabled={isSeeding}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-900 shadow-sm disabled:opacity-50"
-          >
-            <Sparkles className="h-4 w-4" />
-            {isSeeding ? "Chargement..." : "Charger la demo"}
-          </button>
-        ) : null}
         <button onClick={onCreateInitiative} className="inline-flex h-9 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-900 shadow-sm">
           <Plus className="h-4 w-4" />
           Nouvelle initiative
@@ -335,9 +328,62 @@ function WorkspaceHeader({
           <Bell className="h-4 w-4" />
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-red-500" />
         </button>
+        <UserProfileMenu
+          user={currentUser}
+          isSigningOut={isSigningOut}
+          onSignOut={onSignOut}
+        />
       </div>
     </div>
   );
+}
+
+function UserProfileMenu({
+  user,
+  isSigningOut,
+  onSignOut,
+}: {
+  user?: User;
+  isSigningOut?: boolean;
+  onSignOut?: () => void;
+}) {
+  const displayName = user?.name || user?.username || user?.email || "Utilisateur Miso";
+  const email = user?.email ?? "Session courriel";
+
+  return (
+    <div className="flex min-w-[240px] items-center gap-3 rounded-md border border-neutral-200 bg-white px-2.5 py-2 shadow-sm max-sm:min-w-0 max-sm:flex-1">
+      <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-md bg-neutral-950 text-xs font-semibold text-white">
+        {user?.avatarUrl ? (
+          <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          initials(displayName)
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium text-neutral-950">{displayName}</span>
+        <span className="block truncate text-xs text-neutral-500">{email}</span>
+      </span>
+      <button
+        type="button"
+        onClick={onSignOut}
+        disabled={!onSignOut || isSigningOut}
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+        title="Se deconnecter"
+        aria-label="Se deconnecter"
+      >
+        {isSigningOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
+
+function initials(value: string) {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  const letters = parts.length > 1
+    ? `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`
+    : value.slice(0, 2);
+
+  return letters.toUpperCase();
 }
 
 function MatrixScreen({
@@ -626,7 +672,7 @@ function DeliverablesScreen({
             />,
             <EditableText
               key="channels"
-              value={deliverable.channels.join(", ")}
+              value={(deliverable.channels ?? []).join(", ")}
               placeholder="Aucun canal"
               ariaLabel="Canaux du livrable"
               onChange={(value) => onEditDeliverable(deliverable.initiative, deliverable.deliverableIndex, { channels: splitChannels(value) })}
@@ -1069,8 +1115,8 @@ function inferRoles(initiative: GtmMatrixInitiative): BusinessRole[] {
 }
 
 function inferChannels(initiative: GtmMatrixInitiative): BusinessChannel[] {
-  return initiative.businessChannels.map((name) => {
-    const deliverable = initiative.deliverables.find((item) => item.channels.includes(name));
+  return (initiative.businessChannels ?? []).map((name) => {
+    const deliverable = initiative.deliverables.find((item) => (item.channels ?? []).includes(name));
     return {
       name,
       businessRole: deliverable?.businessRole ?? initiative.businessOwners[0]?.businessRole ?? "Marketing",
@@ -1089,7 +1135,7 @@ function dedupeChannels(channels: BusinessChannel[]) {
 }
 
 function usageCount(channelName: string, initiatives: GtmMatrixInitiative[]) {
-  return initiatives.filter((initiative) => initiative.businessChannels.includes(channelName)).length;
+  return initiatives.filter((initiative) => (initiative.businessChannels ?? []).includes(channelName)).length;
 }
 
 function healthDot(health: Health) {
@@ -1117,7 +1163,7 @@ function createDraftInitiative(index: number): GtmMatrixInitiative {
     gtmStartDate: "A definir",
     gtmEndDate: "A definir",
     goal: "Structurer l'initiative avec les dates, livrables, taches, canaux et decisions necessaires.",
-    businessChannels: ["Canal metier demo"],
+    businessChannels: ["Canal metier principal"],
     businessOwners: [{ businessRole: "Produit", owner: "Responsable Produit" }],
     deliverables: [
       {
@@ -1125,7 +1171,7 @@ function createDraftInitiative(index: number): GtmMatrixInitiative {
         status: "A faire",
         businessRole: "Produit",
         responsible: "Responsable Produit",
-        channels: ["Canal metier demo"],
+        channels: ["Canal metier principal"],
       },
     ],
     tasks: [
@@ -1236,7 +1282,7 @@ function addDraftChannel(initiative: GtmMatrixInitiative): GtmMatrixInitiative {
     ...initiative,
     businessChannels: [...initiative.businessChannels, nextChannel],
     deliverables: initiative.deliverables.map((deliverable, index) =>
-      index === 0 ? { ...deliverable, channels: Array.from(new Set([...deliverable.channels, nextChannel])) } : deliverable,
+      index === 0 ? { ...deliverable, channels: Array.from(new Set([...(deliverable.channels ?? []), nextChannel])) } : deliverable,
     ),
     activities: addActivity(initiative, `${nextChannel} ajoute au metier ${inferRoles(initiative)[0] ?? "Marketing"}`),
   };

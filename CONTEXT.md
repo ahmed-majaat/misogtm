@@ -4,6 +4,10 @@ Miso GTM is a go-to-market operating system for coordinating product-related mar
 
 ## Language
 
+**Profil utilisateur**:
+The signed-in person's identity inside Miso GTM, including the display name, email, and avatar used to recognize the active workspace session.
+_Avoid_: Account, Member, Auth session
+
 **Initiative**:
 An effort go-to-market tied to a product change, campaign, launch, repositioning, or market expansion, with a responsable GTM, channels, livrables, decisions, and progress.
 _Avoid_: Launch, Campaign, Project

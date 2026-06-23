@@ -11,7 +11,6 @@ This directory is the project root. The parent folder is only a container.
 Key source areas:
 
 - `src/gtm-matrix.tsx` - the current GTM workspace surface.
-- `src/demo-data.ts` - local demo initiatives used when Convex has no data.
 - `convex/gtm.ts` - Convex queries and mutations for GTM data.
 - `convex/schema.ts` - canonical GTM tables and validators.
 - `CONTEXT.md` - product language glossary.
@@ -26,7 +25,7 @@ npm run typecheck
 npm run lint
 ```
 
-When `VITE_CONVEX_URL` is missing, the app runs in demo mode. When Convex is configured, the same Matrice GTM surface reads from `api.gtm.listInitiatives` and can seed demo initiatives.
+`VITE_CONVEX_URL` is required so the app can connect to Convex and open the authenticated Miso GTM dashboard. The Matrice GTM reads initiatives from `api.gtm.listInitiatives`.
 
 ## Current Direction
 
