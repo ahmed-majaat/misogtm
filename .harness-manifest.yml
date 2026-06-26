@@ -1,0 +1,82 @@
+# Miso GTM agent harness manifest.
+#
+# This follows the SAW manifest shape so future upstream syncs can identify
+# local customizations and avoid overwriting repo-owned agent guidance.
+
+manifest_version: "1.1"
+
+identity:
+  PROJECT_NAME: "Miso GTM"
+  PROJECT_REPO: "miso-gtm-saas"
+  PROJECT_SHORT: "miso-gtm"
+  PROJECT_DOMAIN: "gtm-saas"
+  GITHUB_ORG: ""
+  COMPANY_NAME: "Miso GTM"
+  AUTHOR_NAME: ""
+  AUTHOR_FIRST_NAME: ""
+  AUTHOR_LAST_NAME: ""
+  AUTHOR_HANDLE: ""
+  AUTHOR_EMAIL: ""
+  AUTHOR_WEBSITE: ""
+  SECURITY_EMAIL: ""
+  ARCHITECT_GITHUB_HANDLE: ""
+  TICKET_PREFIX: "MISO"
+  LINEAR_WORKSPACE: ""
+  MAIN_BRANCH: "main"
+  MCP_LINEAR_SERVER: ""
+  MCP_CONFLUENCE_SERVER: ""
+  DB_USER: ""
+  DB_PASSWORD: ""
+  DB_NAME: ""
+  DB_CONTAINER: ""
+  DEV_CONTAINER: ""
+  STAGING_CONTAINER: ""
+  CONTAINER_REGISTRY: ""
+
+substitutions:
+  PROJECT_NAME: "Miso GTM"
+  PROJECT_REPO: "miso-gtm-saas"
+  PROJECT_SHORT: "miso-gtm"
+  PROJECT_DOMAIN: "gtm-saas"
+  TICKET_PREFIX: "MISO"
+  MAIN_BRANCH: "main"
+
+renames: {}
+
+protected:
+  - "AGENTS.md"
+  - "CLAUDE.md"
+  - "CONTEXT.md"
+  - "CONTEXT-MAP.md"
+  - ".env*"
+  - "convex/_generated/**"
+  - ".agents/skills/convex*/**"
+  - ".agents/skills/oneshot-feature/**"
+  - ".agents/skills/feature-intake/**"
+  - ".agents/skills/feature-gate-review/**"
+  - ".claude/skills/oneshot-feature/**"
+  - ".claude/skills/feature-intake/**"
+  - ".claude/skills/feature-gate-review/**"
+  - "docs/agents/**"
+  - "scripts/oneshot-feature-check.sh"
+
+replaced: []
+
+sync:
+  sync_scope:
+    - ".agents/"
+    - ".claude/"
+  auto_substitute: true
+  backup: true
+  conflict_strategy: "prompt"
+  substitution_extensions:
+    - ".md"
+    - ".json"
+    - ".yml"
+    - ".yaml"
+    - ".sh"
+    - ".py"
+    - ".ts"
+    - ".mjs"
+    - ".txt"
+    - ".toml"
